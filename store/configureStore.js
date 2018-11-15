@@ -1,4 +1,5 @@
-import { createStore } from 'redux'
+import { createStore, combineReducers } from 'redux'
 import toggleFavorite from './reducers/favoriteReducer'
+import setAvatar from './reducers/setAvatar'
 
-export default createStore(toggleFavorite)
+export default createStore(combineReducers({toggleFavorite, setAvatar}))

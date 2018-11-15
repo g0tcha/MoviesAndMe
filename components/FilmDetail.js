@@ -1,31 +1,63 @@
 import React from 'react'
-import { StyleSheet, View, Image, Text, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native'
+import { StyleSheet, View, Image, Text, ActivityIndicator, ScrollView, TouchableOpacity, Share, Alert, Platform } from 'react-native'
 import { getFilmDetailFromApi, getImageFromApi } from '../API/TMDBApi'
 import moment from 'moment'
 import numeral from 'numeral'
 import { connect, mapDispatchToProps } from 'react-redux'
+import EnlargeShrink from '../animations/EnlargeShrink'
 
 class FilmDetail extends React.Component {
+    static navigationOptions = ({navigation}) => {
+        const { params } = navigation.state
+        if(params.film != undefined && Platform.OS === 'ios') {
+            return {
+                headerRight:
+                    <TouchableOpacity style={styles.shareTouchableHeaderRightButton} onPress={() => params.shareFilm()}>
+                        <Image style={styles.shareImage} source={require('../images/ic_share.png')} />
+                    </TouchableOpacity>
+            }
+        }
+    }
+
     constructor(props) {
         super(props)
         this.state = {
             film: undefined,
             isLoading: true
         }
+        this._shareFilm = this._shareFilm.bind(this)
     }
 
     componentDidMount() {
+        const favoriteFilmIndex = this.props.favoritesFilm.findIndex(item => item.id === this.props.navitation.state.params.idFilm)
+        if(favoriteFilmIndex !== -1) {
+            this.setState({
+                film: this.props.favoritesFilm[favoriteFilmIndex]
+            }, () => {
+                this._updateNavigationParams()
+            })
+            return
+        }
+
+        this.setState({ isLoading: true })
+
         getFilmDetailFromApi(this.props.navigation.state.params.idFilm).then(data => {
             this.setState({
                 film: data,
                 isLoading: false
-            })
+            }, () => { this._updateNavigationParams() })
         })
     }
 
     componentDidUpdate() {
-        console.log("componentDidUpdate: ")
         console.log(this.props.favoritesFilm)
+    }
+
+    _updateNavigationParams() {
+        this.props.navigation.setParams({
+            shareFilm: this._shareFilm,
+            film: this.state.film
+        })
     }
 
     _displayLoading() {
@@ -38,6 +70,19 @@ class FilmDetail extends React.Component {
         }
     }
 
+    _displayFloatingActionButton() {
+        const { film } = this.state
+        if(film != undefined && Platform.OS === 'android') {
+            return (
+                <TouchableOpacity
+                    style={styles.shareTouchableFloatingActionButton}
+                    onPress={() => this._shareFilm()}>
+                    <Image style={shareImage} source={require('../images/ic_share.png')} />
+                </TouchableOpacity>
+            )
+        }
+    }
+
     _toggleFavorite() {
         const action = { type: "TOGGLE_FAVORITE", value: this.state.film }
         this.props.dispatch(action)
@@ -45,14 +90,40 @@ class FilmDetail extends React.Component {
 
     _displayFavoriteImage() {
         var sourceImage = require('../images/favorite_off.png')
+        var shouldEnlarge = false
+
         if(this.props.favoritesFilm.findIndex(item => item.id === this.state.film.id) !== -1) {
             sourceImage = require('../images/favorite_on.png')
+            shouldEnlarge = true
         }
+
         return (
-            <Image
-                style={styles.favoriteImage}
-                source={sourceImage}
-            />
+            <EnlargeShrink shouldEnlarge={shouldEnlarge}>
+                <Image style={styles.favoriteImage} source={sourceImage} />
+            </EnlargeShrink>
+        )
+    }
+
+    _shareFilm() {
+        const { film } = this.state
+        Share.share({ title: film.title, message: film.overview })
+        .then(
+            Alert.alert(
+                'Succès',
+                'Film partagé',
+                [
+                    {text: 'OK', onPress: () => {}}
+                ]
+            )
+        )
+        .catch(err =>
+            Alert.alert(
+                'Echec',
+                'Film non partagé',
+                [
+                    {text: 'OK', onPress: () => {}}
+                ]
+            )
         )
     }
 
@@ -103,6 +174,7 @@ class FilmDetail extends React.Component {
             <View style={styles.mainContainer}>
                 {this._displayLoading()}
                 {this._displayFilm()}
+                {this._displayFloatingActionButton()}
             </View>
         )
     }
@@ -110,7 +182,7 @@ class FilmDetail extends React.Component {
 
 const mapStateToProps = (state) => {
     return {
-        favoritesFilm: state.favoritesFilm
+        favoritesFilm: state.toggleFavorite.favoritesFilm
     }
 }
 
@@ -157,8 +229,27 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     favoriteImage: {
-        width: 40,
-        height: 40
+        flex: 1,
+        width: null,
+        height: null
+    },
+    shareTouchableFloatingActionButton: {
+        position: 'absolute',
+        width: 60,
+        height: 60,
+        right: 30,
+        bottom: 30,
+        borderRadius: 30,
+        backgroundColor: '#e91e63',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    shareImage: {
+        width: 30,
+        height: 30
+    },
+    shareTouchableHeaderRightButton: {
+        marginRight: 8
     }
 })
 
