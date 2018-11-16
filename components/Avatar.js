@@ -12,7 +12,7 @@ class Avatar extends React.Component {
     _avatarClicked() {
         ImagePicker.showImagePicker({}, (response) => {
             if(response.didCancel) {
-                console.log("L'utilisateur a annulé");
+                console.log("Cancel by user");
             } else if(response.error) {
                 console.log("Erreur : ", response.error);
             } else {

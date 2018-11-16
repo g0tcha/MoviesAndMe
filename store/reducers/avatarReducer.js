@@ -1,6 +1,6 @@
 const initialState = { avatar: require('../../images/ic_tag_faces.png') }
 
-function setAvatar(state= initialState, action) {
+function setAvatar(state = initialState, action) {
     let nextState
     switch (action.type) {
         case 'SET_AVATAR':
